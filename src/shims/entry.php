@@ -1,33 +1,43 @@
 <?php
 
-define('TEXT_REG', '#\.html.*|\.js.*|\.css.*|\.html.*#');
-define('BINARY_REG', '#\.gif.*|\.jpg.*|\.png.*|\.jepg.*|\.swf.*|\.bmp.*|\.ico.*#');
-
+define('DISALLOW_REG', '#\.htaccess.*|\.php.*#');
 /**
  * handler static files
  */
 function handlerStatic($path)
 {
-    $filename = __DIR__ . "/public" . $path;
+    $filename = __DIR__ . "/public/" . $path;
     $handle   = fopen($filename, "r");
-    $contents = fread($handle, filesize($filename));
+
+    $contents = '';
+    if(filesize($filename) > 0) {
+        $contents = fread($handle, filesize($filename));
+    }
+
     fclose($handle);
 
-    $base64Encode = false;
-    $headers = [
-        'Content-Type'  => '',
-        'Cache-Control' => "max-age=8640000",
-        'Accept-Ranges' => 'bytes',
-    ];
-    $body = $contents;
-    if (preg_match(BINARY_REG, $path)) {
+    $headers = [];
+
+    switch(pathinfo($filename, PATHINFO_EXTENSION)) {
+        case 'css':
+            $headers['Content-Type'] = 'text/css';
+            break;
+        case 'svg':
+            $headers['Content-Type'] = 'image/svg+xml';
+            break;
+        default:
+            $headers['Content-Type'] = mime_content_type($filename);
+            break;
+    }
+
+    if (substr($headers['Content-Type'], 0, 4) === 'text') {
+        $base64Encode = false;
+        $body = $contents;
+    } else {
         $base64Encode = true;
-        $headers = [
-            'Content-Type'  => '',
-            'Cache-Control' => "max-age=86400",
-        ];
         $body = base64_encode($contents);
     }
+
     return [
         "isBase64Encoded" => $base64Encode,
         "statusCode" => 200,
@@ -40,9 +50,11 @@ function handler($event, $context)
 {
     require __DIR__ . '/vendor/autoload.php';
 
-    $path = substr($event->path, 1);
+    if(substr($event->path, 0, 1) === '/') $path = substr($event->path, 1);
 
-    if (preg_match(TEXT_REG, $path) || preg_match(BINARY_REG, $path)) {
+    $filename = __DIR__ . "/public/" . $path;
+
+    if (!empty($path) && file_exists($filename) && !preg_match(DISALLOW_REG, $path)) {
         return handlerStatic($path);
     }
 
