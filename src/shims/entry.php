@@ -40,45 +40,48 @@ function handler($event, $context)
 {
     require __DIR__ . '/vendor/autoload.php';
 
-    // init path
-    $path = str_replace("//", "/", $event->path);
+    $path = substr($event->path, 1);
 
     if (preg_match(TEXT_REG, $path) || preg_match(BINARY_REG, $path)) {
         return handlerStatic($path);
     }
 
-    // init body
-    $req = $event->body ?? '';
-
-    // init headers
     $headers = $event->headers ?? [];
     $headers = json_decode(json_encode($headers), true);
 
-    // init data
-    $data = !empty($req) ? json_decode($req, true) : [];
+    $_GET = $event->queryString ?? [];
+    $_GET = json_decode(json_encode($_GET), true);
 
-    // execute thinkphp app request, get response
+    if(!empty($event->body)) {
+        $_POSTbody = explode("&", $event->body);
+        foreach ($_POSTbody as $postvalues) {
+            $tmp=explode("=", $postvalues);
+            $_POST[$tmp[0]] = $tmp[1];
+        }
+    }
+
     $app = new \think\App();
+    $app->setRuntimePath('/tmp/runtime' . DIRECTORY_SEPARATOR);
+
     $http = $app->http;
     
-    $request = new \think\Request($app);
+    $request = $app->make('request', [], true);
 
     $request->setPathinfo($path);
     $request->setMethod($event->httpMethod);
-    $request->withInput($event->body);
     $request->withHeader($headers);
 
-    $response = $http->run();
+    $response = $http->run($request);
 
     $http->end($response);
 
-    // init content
+
     $body = $response->getContent();
     $contentType = $response->getHeader('Content-Type');
 
     return [
         'isBase64Encoded' => false,
-        'statusCode' => 200,
+        'statusCode' => $response->getCode(),
         'headers' => [
             'Content-Type' => $contentType
         ],
