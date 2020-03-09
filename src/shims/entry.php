@@ -4,10 +4,9 @@ define('DISALLOW_REG', '#\.htaccess.*|\.php.*#');
 /**
  * handler static files
  */
-function handlerStatic($path)
+function handlerStatic($filename)
 {
-    $filename = __DIR__ . "/public/" . $path;
-    $handle   = fopen($filename, "r");
+    $handle = fopen($filename, "r");
 
     $contents = '';
     if(filesize($filename) > 0) {
@@ -55,7 +54,7 @@ function handler($event, $context)
     $filename = __DIR__ . "/public/" . $path;
 
     if (!empty($path) && file_exists($filename) && !preg_match(DISALLOW_REG, $path)) {
-        return handlerStatic($path);
+        return handlerStatic($filename);
     }
 
     $headers = $event->headers ?? [];
