@@ -73,7 +73,7 @@ function handler($event, $context)
     }
 
     $app = new \think\App();
-    $app->setRuntimePath('/tmp/runtime' . DIRECTORY_SEPARATOR);
+    $app->setRuntimePath(DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR);
 
     $http = $app->http;
     
